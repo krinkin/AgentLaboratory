@@ -1,6 +1,5 @@
 import PyPDF2
 import threading
-from app import *
 from agents import *
 from copy import copy
 from pathlib import Path
@@ -8,6 +7,11 @@ from datetime import date
 from common_imports import *
 from mlesolver import MLESolver
 import argparse, pickle, yaml
+
+# Lazy import for app functions - only when AgentRxiv is used
+app = None
+update_papers_from_uploads = None
+run_app = None
 
 GLOBAL_AGENTRXIV = None
 DEFAULT_LLM_BACKBONE = "o3-mini"
@@ -315,6 +319,24 @@ class LaboratoryWorkflow:
         # experiment notes
         experiment_notes = [_note["note"] for _note in self.ml_engineer.notes if "running experiments" in _note["phases"]]
         experiment_notes = f"Notes for the task objective: {experiment_notes}\n" if len(experiment_notes) > 0 else ""
+        
+        # Check if this is a theoretical paper (no coding)
+        if "NO CODING" in experiment_notes or "theoretical paper" in experiment_notes.lower():
+            if self.verbose: print("Skipping experiments - this is a theoretical paper")
+            # Set placeholder values for theoretical work
+            theoretical_description = """
+            This is a theoretical paper focusing on mathematical formalization and conceptual framework.
+            No experimental implementation or coding is required.
+            The mathematical derivations and theoretical analysis are presented in the main text.
+            Future experimental validation is suggested as follow-up work.
+            """
+            self.set_agent_attr("results_code", theoretical_description)
+            self.set_agent_attr("exp_results", "Theoretical analysis - see mathematical derivations in paper")
+            save_to_file(f"./{self.lab_dir}/src", "theoretical_work.txt", theoretical_description)
+            self.reset_agents()
+            return False
+            
+        # Original code for experimental papers
         # instantiate mle-solver
         solver = MLESolver(dataset_code=self.ml_engineer.dataset_code, notes=experiment_notes, insights=self.ml_engineer.lit_review_sum, max_steps=self.mlesolver_max_steps, plan=self.ml_engineer.plan, openai_api_key=self.openai_api_key, llm_str=self.model_backbone["running experiments"])
         # run initialization for solver
@@ -345,6 +367,25 @@ class LaboratoryWorkflow:
         Perform data preparation phase
         @return: (bool) whether to repeat the phase
         """
+        # Check notes for theoretical paper indication
+        data_notes = [_note["note"] for _note in self.ml_engineer.notes if "data preparation" in _note["phases"]]
+        data_notes_str = " ".join(data_notes) if data_notes else ""
+        
+        # Skip coding if this is a theoretical paper
+        if "NO CODING" in data_notes_str or "theoretical paper" in data_notes_str.lower() or "theoretical examples" in data_notes_str.lower():
+            if self.verbose: print("Skipping data preparation coding - this is a theoretical paper")
+            theoretical_data = """
+            # Theoretical Paper - No Dataset Required
+            # This research focuses on mathematical formalization and theoretical framework
+            # Examples and case studies are drawn from linguistics literature
+            # No computational implementation or dataset loading is needed
+            """
+            save_to_file(f"./{self.lab_dir}/src", "theoretical_data.txt", theoretical_data)
+            self.set_agent_attr("dataset_code", theoretical_data)
+            self.reset_agents()
+            return False
+            
+        # Original code for experimental papers
         max_tries = self.max_steps
         ml_feedback = str()
         ml_dialogue = str()
@@ -575,6 +616,10 @@ class LaboratoryWorkflow:
 
 class AgentRxiv:
     def __init__(self, lab_index=0):
+        # Import app functions only when AgentRxiv is actually used
+        global app, update_papers_from_uploads, run_app
+        from app import app, update_papers_from_uploads, run_app
+        
         self.lab_index = lab_index
         self.server_thread = None
         self.initialize_server()

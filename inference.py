@@ -19,6 +19,11 @@ def curr_cost_est():
         "deepseek-chat": 1.00 / 1000000,
         "o1": 15.00 / 1000000,
         "o3-mini": 1.10 / 1000000,
+        "o3": 20.00 / 1000000,  # Estimated based on o1 pricing
+        "o4-mini": 1.50 / 1000000,  # Estimated
+        "gpt-5": 1.25 / 1000000,  # From search results
+        "gpt-5-mini": 0.50 / 1000000,  # Estimated
+        "gpt-4.1": 3.00 / 1000000,  # Estimated
     }
     costmap_out = {
         "gpt-4o": 10.00/ 1000000,
@@ -29,6 +34,11 @@ def curr_cost_est():
         "deepseek-chat": 5.00 / 1000000,
         "o1": 60.00 / 1000000,
         "o3-mini": 4.40 / 1000000,
+        "o3": 80.00 / 1000000,  # Estimated based on o1 pricing
+        "o4-mini": 6.00 / 1000000,  # Estimated
+        "gpt-5": 10.00 / 1000000,  # From search results
+        "gpt-5-mini": 2.00 / 1000000,  # Estimated
+        "gpt-4.1": 12.00 / 1000000,  # Estimated
     }
     return sum([costmap_in[_]*TOKENS_IN[_] for _ in TOKENS_IN]) + sum([costmap_out[_]*TOKENS_OUT[_] for _ in TOKENS_OUT])
 
@@ -186,9 +196,67 @@ def query_model(model_str, prompt, system_prompt, openai_api_key=None, gemini_ap
                     completion = client.chat.completions.create(
                         model="o1-preview", messages=messages)
                 answer = completion.choices[0].message.content
+            elif model_str == "o3":
+                # O3 reasoning model (August 2025)
+                messages = [
+                    {"role": "user", "content": system_prompt + prompt}]
+                client = OpenAI()
+                completion = client.chat.completions.create(
+                    model="o3", messages=messages)
+                answer = completion.choices[0].message.content
+            elif model_str == "o4-mini":
+                # O4-mini fast reasoning model (August 2025)
+                messages = [
+                    {"role": "user", "content": system_prompt + prompt}]
+                client = OpenAI()
+                completion = client.chat.completions.create(
+                    model="o4-mini", messages=messages)
+                answer = completion.choices[0].message.content
+            elif model_str in ["gpt-5", "gpt5", "GPT-5", "GPT5"]:
+                # GPT-5 flagship model (August 2025)
+                model_str = "gpt-5"
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}]
+                client = OpenAI()
+                if temp is None:
+                    completion = client.chat.completions.create(
+                        model="gpt-5", messages=messages)
+                else:
+                    completion = client.chat.completions.create(
+                        model="gpt-5", messages=messages, temperature=temp)
+                answer = completion.choices[0].message.content
+            elif model_str in ["gpt-5-mini", "gpt5-mini", "GPT-5-mini"]:
+                # GPT-5 mini model (August 2025)
+                model_str = "gpt-5-mini"
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}]
+                client = OpenAI()
+                if temp is None:
+                    completion = client.chat.completions.create(
+                        model="gpt-5-mini", messages=messages)
+                else:
+                    completion = client.chat.completions.create(
+                        model="gpt-5-mini", messages=messages, temperature=temp)
+                answer = completion.choices[0].message.content
+            elif model_str in ["gpt-4.1", "gpt4.1", "GPT-4.1"]:
+                # GPT-4.1 with 1M token context (April 2025)
+                model_str = "gpt-4.1"
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}]
+                client = OpenAI()
+                if temp is None:
+                    completion = client.chat.completions.create(
+                        model="gpt-4.1", messages=messages)
+                else:
+                    completion = client.chat.completions.create(
+                        model="gpt-4.1", messages=messages, temperature=temp)
+                answer = completion.choices[0].message.content
 
             try:
-                if model_str in ["o1-preview", "o1-mini", "claude-3.5-sonnet", "o1", "o3-mini"]:
+                if model_str in ["o1-preview", "o1-mini", "claude-3.5-sonnet", "o1", "o3-mini", "o3", "o4-mini", "gpt-5", "gpt-5-mini", "gpt-4.1"]:
                     encoding = tiktoken.encoding_for_model("gpt-4o")
                 elif model_str in ["deepseek-chat"]:
                     encoding = tiktoken.encoding_for_model("cl100k_base")

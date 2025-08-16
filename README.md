@@ -42,7 +42,13 @@
 
 ### 👾 Currently supported models
 
-* **OpenAI**: o1, o1-preview, o1-mini, gpt-4o, o3-mini
+* **OpenAI (August 2025)**: 
+  - GPT-5, GPT-5-mini (latest flagship models)
+  - o3, o4-mini (advanced reasoning models)
+  - GPT-4.1 (1M token context)
+  - o1, o1-preview, o1-mini
+  - gpt-4o, gpt-4o-mini
+  - o3-mini
 * **DeepSeek**: deepseek-chat (deepseek-v3)
 
 To select a specific llm set the flag `--llm-backend="llm_model"` for example `--llm-backend="gpt-4o"` or `--llm-backend="deepseek-chat"`. Please feel free to add a PR supporting new models according to your need!
